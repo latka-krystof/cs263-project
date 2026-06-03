@@ -6,7 +6,7 @@ from transformers import AutoProcessor, LlavaForConditionalGeneration
 
 # 1. Load Model and Processor
 model_id = "llava-hf/llava-1.5-7b-hf"
-print("Loading model...")
+print("Loading model for Adversarial POPE Baseline...")
 model = LlavaForConditionalGeneration.from_pretrained(
     model_id, 
     torch_dtype=torch.float16, 
@@ -18,29 +18,25 @@ processor = AutoProcessor.from_pretrained(model_id)
 tp, tn, fp, fn = 0, 0, 0, 0
 
 # 3. File Paths
-# Point these to the data you just downloaded
-pope_json_path = "data/pope/coco_pope_random.json"
+# Updated to the adversarial dataset used in the grid search
+pope_json_path = "data/pope/coco_pope_adversarial.json"
 coco_images_dir = "data/pope/val2014"
 
 print(f"Loading dataset from {pope_json_path}...")
 
-# POPE files are JSONL (one JSON object per line)
 with open(pope_json_path, "r") as f:
     lines = f.readlines()
 
-# --- TEST LIMIT ---
-# Set this to a small number (e.g., 50) to test a part of the dataset.
-# Set to len(lines) when you are ready to run the full benchmark.
-max_questions = 50 
+# Match the 150-question limit from the other experiments
+max_questions = 150 
 lines = lines[:max_questions]
 
-print(f"Starting evaluation loop for {len(lines)} questions...\n")
+print(f"Starting evaluation loop for {len(lines)} adversarial questions...\n")
 
 # 4. Evaluation Loop
 for i, line in enumerate(lines):
     data = json.loads(line)
     
-    # The POPE JSON usually provides the image filename like "COCO_val2014_000000000139.jpg"
     image_name = data["image"]
     image_path = os.path.join(coco_images_dir, image_name)
     
@@ -77,9 +73,15 @@ precision = tp / (tp + fp) if (tp + fp) > 0 else 0
 recall = tp / (tp + fn) if (tp + fn) > 0 else 0
 f1 = 2 * (precision * recall) / (precision + recall) if (precision + recall) > 0 else 0
 
-print("\n=== POPE Evaluation Results ===")
-print(f"Total Questions Evaluated: {len(lines)}")
+print("\n" + "="*40)
+print("=== ADVERSARIAL POPE BASELINE RESULTS ===")
+print("="*40)
+print(f"Total Questions: {len(lines)}")
 print(f"Accuracy:  {accuracy * 100:.2f}%")
 print(f"Precision: {precision * 100:.2f}%")
 print(f"Recall:    {recall * 100:.2f}%")
 print(f"F1 Score:  {f1 * 100:.2f}%")
+print("-" * 40)
+print(f"False Pos. (Hallucinations): {fp}")
+print(f"False Neg. (Misses):         {fn}")
+print("="*40)
